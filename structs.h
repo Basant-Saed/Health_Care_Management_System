@@ -1,7 +1,7 @@
 #ifndef STRUCTURES_H
 #define STRUCTURES_H
 
-#pragma pack(push, 1)              // this is to avoid padding in the struct & keep the size 95 bytes
+#pragma pack(push, 1)           
 struct Doctor {
     char ID[15];
     char name[30];

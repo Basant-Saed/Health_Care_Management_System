@@ -1,7 +1,7 @@
 #include "appointmentManager.h"
 #include "doctorManager.h"
+#include "indexManager.h"
 #include "structs.h"
-
 #include <algorithm>
 #include <iostream>
 #include <cstring>
@@ -44,28 +44,39 @@ void add_appointment() {
         cin >> ws;
         cin.getline(a.doctor_id, 15);
 
-        int availhead = -1;
-        app.seekg(0, ios::beg);
-        app.read(reinterpret_cast<char*>(&availhead), sizeof(int));
+        if (searchPrimaryIndex(appointmentPrimaryIndex, a.ID) != -1) {
+            cout << "Error: Appointment ID already exists. Record not added." << endl;  
+        }
+        else if (appointmentPrimaryIndex.count >= MAX_INDEX_SIZE) {
+            cout << "Error: Appointment index is full. Record not added." << endl;
+        }
+        else {
 
-        if (availhead != -1) {
-            app.seekg(availhead + 1, ios::beg);      // availhead contains the flag so we access the byte after it
-            int nextavail = -1;
-            app.read(reinterpret_cast<char*>(&nextavail), sizeof(int));
+            int availhead = -1;
+            app.seekg(0, ios::beg);
+            app.read(reinterpret_cast<char*>(&availhead), sizeof(int));
 
-            app.seekp(availhead, ios::beg);
-            app.write(reinterpret_cast<char*>(&a), sizeof(Appointment));
+            if (availhead != -1) {
+                app.seekg(availhead + 1, ios::beg);
+                int nextavail = -1;
+                app.read(reinterpret_cast<char*>(&nextavail), sizeof(int));
 
-            app.seekp(0, ios::beg);
-            app.write(reinterpret_cast<char*>(&nextavail), sizeof(int));
+                app.seekp(availhead, ios::beg);
+                app.write(reinterpret_cast<char*>(&a), sizeof(Appointment));
 
-            cout << "Appointment added to reused slot at offset: " << availhead << endl;
+                app.seekp(0, ios::beg);
+                app.write(reinterpret_cast<char*>(&nextavail), sizeof(int));
+                insertPrimaryIndex(appointmentPrimaryIndex, a.ID, availhead);
+                cout << "Appointment added to reused slot at offset: " << availhead << endl;
 
-        } else {
-            app.seekp(0, ios::end);
-            app.write(reinterpret_cast<char*>(&a), sizeof(Appointment));
-            cout << " Appointment added at end of file." << endl;
-
+            }
+            else {
+                app.seekp(0, ios::end);
+                int newOffset = static_cast<int>(app.tellp());
+                app.write(reinterpret_cast<char*>(&a), sizeof(Appointment));
+                insertPrimaryIndex(appointmentPrimaryIndex, a.ID, newOffset);
+                cout << " Appointment added at end of file." << endl;
+            }
         }
         cout << "Do you want to add more appointments? (y/n): ";
         cin >> choice;
@@ -77,7 +88,7 @@ void add_appointment() {
 
 bool delete_appointment(fstream& app, const char* appID) {
     if (!app) return false;
-    app.seekg(4, ios::beg);                              // skip header 
+    app.seekg(4, ios::beg);                               
     Appointment a;
     streampos offset = app.tellg();
     bool found = false;
@@ -92,6 +103,7 @@ bool delete_appointment(fstream& app, const char* appID) {
     }
 
     if (!found) {
+		app.clear();
         cout << "Error: Appointment ID not found!" << endl;
         return false;
     }
@@ -107,10 +119,11 @@ bool delete_appointment(fstream& app, const char* appID) {
     int newavail = static_cast<int>(offset);
     app.seekp(0, ios::beg);
     app.write(reinterpret_cast<char*>(&newavail), sizeof(int));
+    deletePrimaryIndex(appointmentPrimaryIndex, appID);
     cout << "Appointment deleted successfully! Avail List updated." << endl;
     return true;
 }
 
 bool update_appointment(fstream& app, const char* oldID, const Appointment& updatedApp) {
-   
+	return false;
 }

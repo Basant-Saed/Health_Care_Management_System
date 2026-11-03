@@ -2,6 +2,7 @@
 #include <fstream>
 #include "structs.h"
 #include "doctorManager.h"
+#include "indexManager.h"
 #include "appointmentManager.h"
 
 
@@ -11,6 +12,9 @@ int main() {
 
     initializeDoctorFile();
     initializeAppointment();
+
+    buildDoctorPrimaryIndex(doctors.dart);
+    buildAppointmentPrimaryIndex(appointments.dart);
 
     cout << "=== Healthcare System ===" << endl;
 

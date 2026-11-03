@@ -1,0 +1,11 @@
+# Visual Studio
+.vs/
+
+# Compiled files
+*.exe
+*.obj
+*.o
+*.ipch
+
+# Temporary files
+*.dat

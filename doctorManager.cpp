@@ -1,6 +1,7 @@
 #include "doctorManager.h"
 #include "appointmentManager.h"
 #include "structs.h"
+#include "indexManager.h"
 #include <iostream>
 #include <fstream>
 #include <cstring>
@@ -30,7 +31,7 @@ void add_doctor() {
     do {
         Doctor d;
 
-        fill(d.ID, d.ID + 15, '\0'); // first we fill the array with null characters to avoid garbage values
+        fill(d.ID, d.ID + 15, '\0'); 
         cout << "Enter Doctor ID: ";
         cin >> ws >> d.ID;
 
@@ -49,30 +50,40 @@ void add_doctor() {
         cin >> ws;
         cin.getline(d.address, 30);
 
-        int availhead = -1;
-        doctor.seekg(0, ios::beg);
-        doctor.read(reinterpret_cast<char*>(&availhead), sizeof(int));
-
-        if (availhead != -1) {
-            doctor.seekg(availhead + 1, ios::beg);      // availhead contains the flag so we access the byte after it
-            int nextavail = -1;
-            doctor.read(reinterpret_cast<char*>(&nextavail), sizeof(int));
-
-            doctor.seekp(availhead, ios::beg);
-            doctor.write(reinterpret_cast<char*>(&d), sizeof(Doctor));
-
-            doctor.seekp(0, ios::beg);
-            doctor.write(reinterpret_cast<char*>(&nextavail), sizeof(int));
-
-            cout << "Doctor added to reused slot at offset: " << availhead << endl;
-
-        } else {
-            doctor.seekp(0, ios::end);
-            doctor.write(reinterpret_cast<char*>(&d), sizeof(Doctor));
-            cout << " Doctor added at end of file." << endl;
-
+        if (searchPrimaryIndex(doctorPrimaryIndex, d.ID) != -1) {
+            cout << "Error: Doctor ID already exists. Record not added." << endl;       
         }
+        else if (doctorPrimaryIndex.count >= MAX_INDEX_SIZE) {                          
+            cout << "Error: Doctor index is full. Record not added." << endl;
+        }
+        else {
+            int availhead = -1;
+            doctor.seekg(0, ios::beg);
+            doctor.read(reinterpret_cast<char*>(&availhead), sizeof(int));
 
+            if (availhead != -1) {
+                doctor.seekg(availhead + 1, ios::beg);
+                int nextavail = -1;
+                doctor.read(reinterpret_cast<char*>(&nextavail), sizeof(int));
+
+                doctor.seekp(availhead, ios::beg);
+                doctor.write(reinterpret_cast<char*>(&d), sizeof(Doctor));
+
+                doctor.seekp(0, ios::beg);
+                doctor.write(reinterpret_cast<char*>(&nextavail), sizeof(int));
+                insertPrimaryIndex(doctorPrimaryIndex, d.ID, availhead);
+                cout << "Doctor added to reused slot at offset: " << availhead << endl;
+
+            }
+            else {
+                doctor.seekp(0, ios::end);
+                int newOffset = static_cast<int>(doctor.tellp());
+                doctor.write(reinterpret_cast<char*>(&d), sizeof(Doctor));
+                insertPrimaryIndex(doctorPrimaryIndex, d.ID, newOffset);
+                cout << " Doctor added at end of file." << endl;
+
+            }
+        }
         cout << "Do you want to add more doctors? (y/n): ";
         cin >> choice;
 
@@ -83,7 +94,7 @@ void add_doctor() {
 
 bool delete_doctor(fstream& doctor, const char* doctorID) {
     if (!doctor) return false;
-    doctor.seekg(4, ios::beg);                              // skip header 
+    doctor.seekg(4, ios::beg);                             
     Doctor d;
     streampos offset = doctor.tellg();
     bool found = false;
@@ -98,6 +109,7 @@ bool delete_doctor(fstream& doctor, const char* doctorID) {
     }
     
     if (!found) {
+		doctor.clear(); 
         cout << "Error: Doctor ID not found!" << endl;
         return false;
     }
@@ -113,10 +125,11 @@ bool delete_doctor(fstream& doctor, const char* doctorID) {
     int newavail = static_cast<int>(offset);
     doctor.seekp(0, ios::beg);
     doctor.write(reinterpret_cast<char*>(&newavail), sizeof(int));
+	deletePrimaryIndex(doctorPrimaryIndex, doctorID);
     cout << "Doctor deleted successfully! Avail List updated." << endl;
     return true;
 }
 
 bool update_doctor(fstream& doctor, const char* oldID, const Doctor& updatedDoctor) { 
-   
+	return false;
 }
