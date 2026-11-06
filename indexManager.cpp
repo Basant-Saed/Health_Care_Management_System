@@ -94,3 +94,31 @@ void buildDoctorPrimaryIndex(const char* filename) {
 void buildAppointmentPrimaryIndex(const char* filename) {
     buildFromFile(appointmentPrimaryIndex, filename, sizeof(Appointment));
 }
+
+bool updatePrimaryKey(PrimaryIndex& index, const char* oldKey, const char* newKey) {
+    int oldPos = binarySearchPrimary(index, oldKey);
+    if (oldPos == -1)
+        return false;
+    if (binarySearchPrimary(index, newKey) != -1)
+        return false;
+
+    int offset = index.entries[oldPos].offset;
+
+    int newPos = findPosition(index, newKey);
+    if (newPos > oldPos)
+        newPos--;
+
+    if (newPos < oldPos) {
+        for (int i = oldPos; i > newPos; i--)
+            index.entries[i] = index.entries[i - 1];
+    }
+    else if (newPos > oldPos) {
+        for (int i = oldPos; i < newPos; i++)
+            index.entries[i] = index.entries[i + 1];
+    }
+
+    memset(index.entries[newPos].key, '\0', KEY_SIZE);
+    strncpy(index.entries[newPos].key, newKey, KEY_SIZE);
+    index.entries[newPos].offset = offset;
+    return true;
+}

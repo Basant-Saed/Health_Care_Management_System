@@ -26,6 +26,7 @@ int searchPrimaryIndex(const PrimaryIndex& index, const char* key);
 int binarySearchPrimary(const PrimaryIndex& index, const char* key);
 bool insertPrimaryIndex(PrimaryIndex& index, const char* key, int offset);
 bool deletePrimaryIndex(PrimaryIndex& index, const char* key);
+bool updatePrimaryKey(PrimaryIndex& index, const char* oldKey, const char* newKey);
 
 void buildDoctorPrimaryIndex(const char* filename);       
 void buildAppointmentPrimaryIndex(const char* filename);  

@@ -9,8 +9,6 @@ void initializeAppointment();
 void add_appointment();
 bool delete_appointment(fstream& app, const char* appID );
 bool update_appointment(fstream& app, const char* oldID, const Appointment& updatedApp);
-
-
-
+void update_appointment_date();
 
 #endif
