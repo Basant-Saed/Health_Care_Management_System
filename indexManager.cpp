@@ -2,6 +2,7 @@
 #include "structs.h"
 #include <cstring>
 #include <fstream>
+#include "secondaryIndex.h"
 using namespace std;
 
 PrimaryIndex doctorPrimaryIndex;
@@ -121,4 +122,19 @@ bool updatePrimaryKey(PrimaryIndex& index, const char* oldKey, const char* newKe
     strncpy(index.entries[newPos].key, newKey, KEY_SIZE);
     index.entries[newPos].offset = offset;
     return true;
+}
+
+//
+
+void rebuildIndexes() {
+
+    buildDoctorPrimaryIndex("doctor.dat");
+
+    buildAppointmentPrimaryIndex("app.dat");
+
+    buildDoctorNameIndex("doctor.dat");
+
+    buildDoctorSpecialtyIndex("doctor.dat");
+    
+    buildAppointmentDoctorIndex("app.dat");
 }

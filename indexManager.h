@@ -31,4 +31,6 @@ bool updatePrimaryKey(PrimaryIndex& index, const char* oldKey, const char* newKe
 void buildDoctorPrimaryIndex(const char* filename);       
 void buildAppointmentPrimaryIndex(const char* filename);  
 
+//
+void rebuildIndexes();
 #endif

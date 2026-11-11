@@ -74,6 +74,8 @@ void add_doctor() {
                 doctor.write(reinterpret_cast<char*>(&nextavail), sizeof(int));
                 insertPrimaryIndex(doctorPrimaryIndex, d.ID, availhead);
                 insertDoctorNameIndex(d.name, d.ID);
+                //
+                insertDoctorSpecialtyIndex(d.specialization, d.ID);
                 cout << "Doctor added to reused slot at offset: " << availhead << endl;
 
             }
@@ -83,6 +85,8 @@ void add_doctor() {
                 doctor.write(reinterpret_cast<char*>(&d), sizeof(Doctor));
                 insertPrimaryIndex(doctorPrimaryIndex, d.ID, newOffset);
                 insertDoctorNameIndex(d.name, d.ID);
+                //
+                insertDoctorSpecialtyIndex(d.specialization, d.ID);
                 cout << " Doctor added at end of file." << endl;
 
             }
@@ -130,6 +134,8 @@ bool delete_doctor(fstream& doctor, const char* doctorID) {
     doctor.write(reinterpret_cast<char*>(&newavail), sizeof(int));
 	deletePrimaryIndex(doctorPrimaryIndex, doctorID);
 	deleteDoctorNameIndex(d.name, d.ID);
+    //
+    deleteDoctorSpecialtyIndex(d.specialization, d.ID);
     cout << "Doctor deleted successfully! Avail List updated." << endl;
     return true;
 }
@@ -174,10 +180,22 @@ bool update_doctor(fstream& doctor, const char* oldID, const Doctor& updatedDoct
             return false;
         }
     }
+    // Update Doctor Specialty Index
+if (strncmp(oldDoc.specialization,
+            updatedDoctor.specialization,
+            SPECIALTY_SIZE) != 0) {
+
+    if (!updateDoctorSpecialtyIndex(oldDoc.specialization,updatedDoctor.specialization,oldID)) {
+
+        cout << "Error: could not update the Doctor Specialty index." << endl;
+        return false;
+    }
+}
 
     if (idChanged) {
         updatePrimaryKey(doctorPrimaryIndex, oldID, updatedDoctor.ID);
         renameDoctorIDInNameIndex(updatedDoctor.name, oldID, updatedDoctor.ID);
+        renameDoctorIDInSpecialtyIndex(updatedDoctor.specialization, oldID, updatedDoctor.ID);
     }
     doctor.clear();
     doctor.seekp(offset, ios::beg);

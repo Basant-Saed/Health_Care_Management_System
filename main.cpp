@@ -8,16 +8,17 @@
 
 using namespace std;
 
-int main() {
 
-    initializeDoctorFile();
-    initializeAppointment();
+int main() { 
 
-    buildDoctorPrimaryIndex(doctors.dart);
-    buildDoctorNameIndex("doctor.dat")
-    buildAppointmentPrimaryIndex(appointments.dart);
+    initializeDoctorFile(); 
 
-    cout << "=== Healthcare System ===" << endl;
+    initializeAppointment(); 
 
-    return 0;
-}
+    rebuildIndexes(); 
+
+    cout << "=== Healthcare System ===" << endl; 
+
+    return 0; 
+
+} 
