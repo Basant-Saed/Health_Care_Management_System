@@ -2,21 +2,30 @@
 #include "doctorManager.h"
 #include "indexManager.h"
 #include "structs.h"
-#include <algorithm>
+#include "secondaryIndex.h"
 #include <iostream>
 #include <cstring>
 #include <fstream>
-#include "secondaryIndex.h"
-
 
 using namespace std;
 
 void initializeAppointment() {
-    ifstream check("app.dat", ios::binary); 
+    ifstream check("app.dat", ios::binary);
     if (!check) {
         ofstream app("app.dat", ios::binary);
         int availHead = -1;
         app.write(reinterpret_cast<char*>(&availHead), sizeof(int));
+    }
+}
+
+static void readKey(const char* prompt, char* key, int size) {
+    memset(key, 0, size);
+    cout << prompt;
+    cin >> ws;
+    cin.getline(key, size);
+    if (cin.fail()) {
+        cin.clear();
+        cin.ignore(1000, '\n');
     }
 }
 
@@ -26,34 +35,22 @@ void add_appointment() {
         cout << "Error opening app.dat file." << endl;
         return;
     }
-    
-    app.seekp(0, ios::end);
-    char choice;
 
+    char choice;
     do {
         Appointment a;
-        fill(a.ID, a.ID + 15, '\0');
+        memset(&a, 0, sizeof(Appointment));
+
         cout << "Enter Appointment ID: ";
         cin >> ws >> a.ID;
-
-        fill(a.date, a.date + 30, '\0');
-        cout << "Enter Appointment Date: ";
-        cin >> ws;
-        cin.getline(a.date, 30);
-
-        fill(a.doctor_id, a.doctor_id + 15, '\0');
-        cout << "Enter Doctor ID for the Appointment: ";
-        cin >> ws;
-        cin.getline(a.doctor_id, 15);
+        readKey("Enter Appointment Date: ", a.date, 30);
+        readKey("Enter Doctor ID for the Appointment: ", a.doctor_id, 15);
 
         if (searchPrimaryIndex(appointmentPrimaryIndex, a.ID) != -1) {
-            cout << "Error: Appointment ID already exists. Record not added." << endl;  
-        }
-        else if (appointmentPrimaryIndex.count >= MAX_INDEX_SIZE) {
+            cout << "Error: Appointment ID already exists. Record not added." << endl;
+        } else if (appointmentPrimaryIndex.count >= MAX_INDEX_SIZE) {
             cout << "Error: Appointment index is full. Record not added." << endl;
-        }
-        else {
-
+        } else {
             int availhead = -1;
             app.seekg(0, ios::beg);
             app.read(reinterpret_cast<char*>(&availhead), sizeof(int));
@@ -68,33 +65,30 @@ void add_appointment() {
 
                 app.seekp(0, ios::beg);
                 app.write(reinterpret_cast<char*>(&nextavail), sizeof(int));
+
                 insertPrimaryIndex(appointmentPrimaryIndex, a.ID, availhead);
-                //
                 insertAppointmentDoctorIndex(a.doctor_id, a.ID);
                 cout << "Appointment added to reused slot at offset: " << availhead << endl;
-
-            }
-            else {
+            } else {
                 app.seekp(0, ios::end);
                 int newOffset = static_cast<int>(app.tellp());
                 app.write(reinterpret_cast<char*>(&a), sizeof(Appointment));
+
                 insertPrimaryIndex(appointmentPrimaryIndex, a.ID, newOffset);
-                //
                 insertAppointmentDoctorIndex(a.doctor_id, a.ID);
                 cout << " Appointment added at end of file." << endl;
             }
         }
         cout << "Do you want to add more appointments? (y/n): ";
         cin >> choice;
-
     } while (choice == 'y' || choice == 'Y');
 
     app.close();
-}   
+}
 
 bool delete_appointment(fstream& app, const char* appID) {
     if (!app) return false;
-    app.seekg(4, ios::beg);                               
+    app.seekg(4, ios::beg);
     Appointment a;
     streampos offset = app.tellg();
     bool found = false;
@@ -104,12 +98,11 @@ bool delete_appointment(fstream& app, const char* appID) {
             found = true;
             break;
         }
-
         offset = app.tellg();
     }
 
     if (!found) {
-		app.clear();
+        app.clear();
         cout << "Error: Appointment ID not found!" << endl;
         return false;
     }
@@ -117,6 +110,7 @@ bool delete_appointment(fstream& app, const char* appID) {
     int avail = -1;
     app.seekg(0, ios::beg);
     app.read(reinterpret_cast<char*>(&avail), sizeof(int));
+
     app.seekp(offset, ios::beg);
     char mark = '*';
     app.write(&mark, sizeof(char));
@@ -125,13 +119,13 @@ bool delete_appointment(fstream& app, const char* appID) {
     int newavail = static_cast<int>(offset);
     app.seekp(0, ios::beg);
     app.write(reinterpret_cast<char*>(&newavail), sizeof(int));
+
     deletePrimaryIndex(appointmentPrimaryIndex, appID);
-    //
     deleteAppointmentDoctorIndex(a.doctor_id, a.ID);
+
     cout << "Appointment deleted successfully! Avail List updated." << endl;
     return true;
 }
-
 
 bool update_appointment(fstream& app, const char* oldID, const Appointment& updatedApp) {
     if (!app) return false;
@@ -141,54 +135,43 @@ bool update_appointment(fstream& app, const char* oldID, const Appointment& upda
         cout << "Error: Appointment ID not found!" << endl;
         return false;
     }
-
     int offset = appointmentPrimaryIndex.entries[pos].offset;
 
     if (updatedApp.ID[0] == '\0' || updatedApp.ID[0] == '*') {
         cout << "Error: Appointment ID cannot be empty or start with '*'." << endl;
         return false;
     }
-
     if (updatedApp.date[0] == '\0') {
         cout << "Error: Appointment date cannot be empty." << endl;
         return false;
     }
-
     if (updatedApp.doctor_id[0] == '\0' || updatedApp.doctor_id[0] == '*') {
         cout << "Error: Doctor ID cannot be empty or start with '*'." << endl;
         return false;
     }
 
     bool idChanged = strncmp(oldID, updatedApp.ID, KEY_SIZE) != 0;
-
     if (idChanged && searchPrimaryIndex(appointmentPrimaryIndex, updatedApp.ID) != -1) {
         cout << "Error: new Appointment ID already exists. Nothing updated." << endl;
         return false;
     }
 
-    // Read old appointment
     Appointment oldApp;
-
     app.clear();
     app.seekg(offset, ios::beg);
-
     if (!app.read(reinterpret_cast<char*>(&oldApp), sizeof(Appointment))) {
         cout << "Error: could not read the appointment record." << endl;
         return false;
     }
 
-    bool doctorChanged =
-        strncmp(oldApp.doctor_id, updatedApp.doctor_id, KEY_SIZE) != 0;
-
+    bool doctorChanged = strncmp(oldApp.doctor_id, updatedApp.doctor_id, KEY_SIZE) != 0;
     bool indexChanged = idChanged || doctorChanged;
 
-    // Update Secondary Index if ID or Doctor ID changed
     if (indexChanged) {
         if (!deleteAppointmentDoctorIndex(oldApp.doctor_id, oldApp.ID)) {
             cout << "Error: could not delete old Appointment Secondary Index entry." << endl;
             return false;
         }
-
         if (!insertAppointmentDoctorIndex(updatedApp.doctor_id, updatedApp.ID)) {
             cout << "Error: could not insert new Appointment Secondary Index entry." << endl;
             insertAppointmentDoctorIndex(oldApp.doctor_id, oldApp.ID);
@@ -196,7 +179,6 @@ bool update_appointment(fstream& app, const char* oldID, const Appointment& upda
         }
     }
 
-    // Update Primary Index if Appointment ID changed
     if (idChanged) {
         if (!updatePrimaryKey(appointmentPrimaryIndex, oldID, updatedApp.ID)) {
             cout << "Error: could not update Appointment Primary Index." << endl;
@@ -208,7 +190,6 @@ bool update_appointment(fstream& app, const char* oldID, const Appointment& upda
         }
     }
 
-    // Write updated appointment
     app.clear();
     app.seekp(offset, ios::beg);
     app.write(reinterpret_cast<const char*>(&updatedApp), sizeof(Appointment));
@@ -223,7 +204,6 @@ bool update_appointment(fstream& app, const char* oldID, const Appointment& upda
     return true;
 }
 
-
 void update_appointment_date() {
     fstream app("app.dat", ios::binary | ios::in | ios::out);
     if (!app) {
@@ -232,36 +212,24 @@ void update_appointment_date() {
     }
 
     char id[KEY_SIZE];
-    memset(id, 0, KEY_SIZE);
-    cout << "Enter Appointment ID: ";
-    cin >> ws;
-    cin.getline(id, KEY_SIZE);
-    if (cin.fail()) {
-        cin.clear();
-        cin.ignore(1000, '\n');
-    }
+    readKey("Enter Appointment ID: ", id, KEY_SIZE);
 
     int offset = searchPrimaryIndex(appointmentPrimaryIndex, id);
     if (offset == -1) {
         cout << "Error: Appointment ID not found!" << endl;
+        app.close();
         return;
     }
+
     Appointment a;
     app.seekg(offset, ios::beg);
     if (!app.read(reinterpret_cast<char*>(&a), sizeof(Appointment))) {
         cout << "Error: could not read the appointment record." << endl;
+        app.close();
         return;
     }
 
-    fill(a.date, a.date + 30, '\0');
-    cout << "Enter new Appointment Date: ";
-    cin >> ws;
-    cin.getline(a.date, 30);
-    if (cin.fail()) {
-        cin.clear();
-        cin.ignore(1000, '\n');
-    }
-
+    readKey("Enter new Appointment Date: ", a.date, 30);
     update_appointment(app, id, a);
     app.close();
 }

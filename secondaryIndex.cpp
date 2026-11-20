@@ -2,12 +2,12 @@
 #include <cstring>
 #include <cstddef>
 #include <fstream>
-#include <vector>
+
 using namespace std;
 
-SecondaryIndex doctorNameIndex        = { "doctor_name_list.dat",        NAME_SIZE,      0, {} };
-SecondaryIndex doctorSpecialtyIndex   = { "doctor_specialty_list.dat",   SPECIALTY_SIZE, 0, {} };
-SecondaryIndex appointmentDoctorIndex = { "appointment_doctor_list.dat", KEY_SIZE,       0, {} };
+SecondaryIndex doctorNameIndex        = {"doctor_name_list.dat",        NAME_SIZE,      0, {}};
+SecondaryIndex doctorSpecialtyIndex   = {"doctor_specialty_list.dat",   SPECIALTY_SIZE, 0, {}};
+SecondaryIndex appointmentDoctorIndex = {"appointment_doctor_list.dat", KEY_SIZE,       0, {}};
 
 static void readNode(fstream& f, int rrn, SecondaryNode& n) {
     f.clear();
@@ -45,11 +45,11 @@ static bool insertKey(SecondaryIndex& x, const char* key, const char* id) {
     if (!f) {
         { ofstream create(x.listFile, ios::binary | ios::app); }
         f.open(x.listFile, ios::binary | ios::in | ios::out);
-        if (!f)
-            return false;
+        if (!f) return false;
     }
+
     int pos = findPosition(x, key);
-    bool exists = pos < x.count && strncmp(x.entries[pos].key, key, x.keySize) == 0;
+    bool exists = (pos < x.count && strncmp(x.entries[pos].key, key, x.keySize) == 0);
     if (!exists && x.count >= MAX_SECONDARY_SIZE)
         return false;
 
@@ -65,11 +65,10 @@ static bool insertKey(SecondaryIndex& x, const char* key, const char* id) {
 
     if (exists) {
         x.entries[pos].head = rrn;
-    }
-    else {
+    } else {
         for (int i = x.count; i > pos; i--)
             x.entries[i] = x.entries[i - 1];
-        memset(x.entries[pos].key, '\0', NAME_SIZE);
+        memset(x.entries[pos].key, 0, NAME_SIZE);
         strncpy(x.entries[pos].key, key, x.keySize);
         x.entries[pos].head = rrn;
         x.count++;
@@ -79,11 +78,10 @@ static bool insertKey(SecondaryIndex& x, const char* key, const char* id) {
 
 static bool deleteKey(SecondaryIndex& x, const char* key, const char* id) {
     int pos = binarySearch(x, key);
-    if (pos == -1)
-        return false;
+    if (pos == -1) return false;
+
     fstream f(x.listFile, ios::binary | ios::in | ios::out);
-    if (!f)
-        return false;
+    if (!f) return false;
 
     int prev = -1, cur = x.entries[pos].head;
     SecondaryNode n;
@@ -94,18 +92,17 @@ static bool deleteKey(SecondaryIndex& x, const char* key, const char* id) {
         prev = cur;
         cur = n.next;
     }
-    if (cur == -1)
-        return false;
+    if (cur == -1) return false;
 
     if (prev == -1) {
         x.entries[pos].head = n.next;
-    }
-    else {
+    } else {
         SecondaryNode p;
         readNode(f, prev, p);
         p.next = n.next;
         writeNode(f, prev, p);
     }
+
     if (x.entries[pos].head == -1) {
         for (int i = pos; i < x.count - 1; i++)
             x.entries[i] = x.entries[i + 1];
@@ -122,17 +119,16 @@ static bool updateKey(SecondaryIndex& x, const char* oldKey, const char* newKey,
 
 static bool renameId(SecondaryIndex& x, const char* key, const char* oldID, const char* newID) {
     int pos = binarySearch(x, key);
-    if (pos == -1)
-        return false;
+    if (pos == -1) return false;
+
     fstream f(x.listFile, ios::binary | ios::in | ios::out);
-    if (!f)
-        return false;
+    if (!f) return false;
 
     SecondaryNode n;
     for (int cur = x.entries[pos].head; cur != -1; cur = n.next) {
         readNode(f, cur, n);
         if (strncmp(n.id, oldID, KEY_SIZE) == 0) {
-            memset(n.id, '\0', KEY_SIZE);
+            memset(n.id, 0, KEY_SIZE);
             strncpy(n.id, newID, KEY_SIZE);
             writeNode(f, cur, n);
             return true;
@@ -143,11 +139,10 @@ static bool renameId(SecondaryIndex& x, const char* key, const char* oldID, cons
 
 static int searchKey(const SecondaryIndex& x, const char* key, char outIDs[][KEY_SIZE], int maxIDs) {
     int pos = binarySearch(x, key);
-    if (pos == -1)
-        return 0;
+    if (pos == -1) return 0;
+
     fstream f(x.listFile, ios::binary | ios::in);
-    if (!f)
-        return 0;
+    if (!f) return 0;
 
     int found = 0;
     SecondaryNode n;
@@ -162,72 +157,75 @@ static void rebuild(SecondaryIndex& x, const char* dataFile, size_t recordSize, 
     x.count = 0;
     { ofstream reset(x.listFile, ios::binary | ios::trunc); }
     ifstream in(dataFile, ios::binary);
-    if (!in)
-        return;
+    if (!in) return;
+
     in.seekg(sizeof(int), ios::beg);
-    vector<char> rec(recordSize);
-    while (in.read(rec.data(), static_cast<streamsize>(recordSize)))
+    char rec[128];
+    while (in.read(rec, static_cast<streamsize>(recordSize))) {
         if (rec[0] != '*')
-            insertKey(x, rec.data() + keyOffset, rec.data());
+            insertKey(x, rec + keyOffset, rec);
+    }
 }
 
-// ============ public functions ============
-int  binarySearchName(const char* name){ 
-    return binarySearch(doctorNameIndex, name); 
+// Doctor Name Index
+int binarySearchName(const char* name) {
+    return binarySearch(doctorNameIndex, name);
 }
-bool insertDoctorNameIndex(const char* name, const char* doctorID){ 
-    return insertKey(doctorNameIndex, name, doctorID); 
+bool insertDoctorNameIndex(const char* name, const char* doctorID) {
+    return insertKey(doctorNameIndex, name, doctorID);
 }
-bool deleteDoctorNameIndex(const char* name, const char* doctorID){ 
-    return deleteKey(doctorNameIndex, name, doctorID); 
+bool deleteDoctorNameIndex(const char* name, const char* doctorID) {
+    return deleteKey(doctorNameIndex, name, doctorID);
 }
-bool updateDoctorNameIndex(const char* oldName, const char* newName, const char* doctorID){ 
-    return updateKey(doctorNameIndex, oldName, newName, doctorID); 
+bool updateDoctorNameIndex(const char* oldName, const char* newName, const char* doctorID) {
+    return updateKey(doctorNameIndex, oldName, newName, doctorID);
 }
-bool renameDoctorIDInNameIndex(const char* name, const char* oldID, const char* newID){ 
-    return renameId(doctorNameIndex, name, oldID, newID); 
+bool renameDoctorIDInNameIndex(const char* name, const char* oldID, const char* newID) {
+    return renameId(doctorNameIndex, name, oldID, newID);
 }
-int  searchDoctorNameIndex(const char* name, char outIDs[][KEY_SIZE], int maxIDs){ 
-    return searchKey(doctorNameIndex, name, outIDs, maxIDs); 
+int searchDoctorNameIndex(const char* name, char outIDs[][KEY_SIZE], int maxIDs) {
+    return searchKey(doctorNameIndex, name, outIDs, maxIDs);
 }
-void buildDoctorNameIndex(const char* doctorFile){ 
-    rebuild(doctorNameIndex, doctorFile, sizeof(Doctor), offsetof(Doctor, name)); 
-}
-
-int  binarySearchSpecialty(const char* specialty){ 
-    return binarySearch(doctorSpecialtyIndex, specialty); 
-}
-bool insertDoctorSpecialtyIndex(const char* specialty, const char* doctorID){ 
-    return insertKey(doctorSpecialtyIndex, specialty, doctorID); 
-}
-bool deleteDoctorSpecialtyIndex(const char* specialty, const char* doctorID){ 
-    return deleteKey(doctorSpecialtyIndex, specialty, doctorID); 
-}
-bool updateDoctorSpecialtyIndex(const char* oldSpecialty, const char* newSpecialty, const char* doctorID){ 
-    return updateKey(doctorSpecialtyIndex, oldSpecialty, newSpecialty, doctorID); 
-}
-bool renameDoctorIDInSpecialtyIndex(const char* specialty, const char* oldID, const char* newID){ 
-    return renameId(doctorSpecialtyIndex, specialty, oldID, newID); 
-}
-int  searchDoctorSpecialtyIndex(const char* specialty, char outIDs[][KEY_SIZE], int maxIDs){ 
-    return searchKey(doctorSpecialtyIndex, specialty, outIDs, maxIDs); 
-}
-void buildDoctorSpecialtyIndex(const char* doctorFile){ 
-    rebuild(doctorSpecialtyIndex, doctorFile, sizeof(Doctor), offsetof(Doctor, specialization)); 
+void buildDoctorNameIndex(const char* doctorFile) {
+    rebuild(doctorNameIndex, doctorFile, sizeof(Doctor), offsetof(Doctor, name));
 }
 
-int  binarySearchAppointmentDoctor(const char* doctorID){ 
-    return binarySearch(appointmentDoctorIndex, doctorID); 
+// Doctor Specialty Index
+int binarySearchSpecialty(const char* specialty) {
+    return binarySearch(doctorSpecialtyIndex, specialty);
 }
-bool insertAppointmentDoctorIndex(const char* doctorID, const char* appointmentID){ 
-    return insertKey(appointmentDoctorIndex, doctorID, appointmentID); 
+bool insertDoctorSpecialtyIndex(const char* specialty, const char* doctorID) {
+    return insertKey(doctorSpecialtyIndex, specialty, doctorID);
 }
-bool deleteAppointmentDoctorIndex(const char* doctorID, const char* appointmentID){ 
-    return deleteKey(appointmentDoctorIndex, doctorID, appointmentID); 
+bool deleteDoctorSpecialtyIndex(const char* specialty, const char* doctorID) {
+    return deleteKey(doctorSpecialtyIndex, specialty, doctorID);
 }
-int  searchAppointmentsByDoctorID(const char* doctorID, char outIDs[][KEY_SIZE], int maxIDs){ 
-    return searchKey(appointmentDoctorIndex, doctorID, outIDs, maxIDs); 
+bool updateDoctorSpecialtyIndex(const char* oldSpecialty, const char* newSpecialty, const char* doctorID) {
+    return updateKey(doctorSpecialtyIndex, oldSpecialty, newSpecialty, doctorID);
 }
-void buildAppointmentDoctorIndex(const char* appointmentFile){ 
-    rebuild(appointmentDoctorIndex, appointmentFile, sizeof(Appointment), offsetof(Appointment, doctor_id)); 
+bool renameDoctorIDInSpecialtyIndex(const char* specialty, const char* oldID, const char* newID) {
+    return renameId(doctorSpecialtyIndex, specialty, oldID, newID);
+}
+int searchDoctorSpecialtyIndex(const char* specialty, char outIDs[][KEY_SIZE], int maxIDs) {
+    return searchKey(doctorSpecialtyIndex, specialty, outIDs, maxIDs);
+}
+void buildDoctorSpecialtyIndex(const char* doctorFile) {
+    rebuild(doctorSpecialtyIndex, doctorFile, sizeof(Doctor), offsetof(Doctor, specialization));
+}
+
+// Appointment Doctor ID Index
+int binarySearchAppointmentDoctor(const char* doctorID) {
+    return binarySearch(appointmentDoctorIndex, doctorID);
+}
+bool insertAppointmentDoctorIndex(const char* doctorID, const char* appointmentID) {
+    return insertKey(appointmentDoctorIndex, doctorID, appointmentID);
+}
+bool deleteAppointmentDoctorIndex(const char* doctorID, const char* appointmentID) {
+    return deleteKey(appointmentDoctorIndex, doctorID, appointmentID);
+}
+int searchAppointmentsByDoctorID(const char* doctorID, char outIDs[][KEY_SIZE], int maxIDs) {
+    return searchKey(appointmentDoctorIndex, doctorID, outIDs, maxIDs);
+}
+void buildAppointmentDoctorIndex(const char* appointmentFile) {
+    rebuild(appointmentDoctorIndex, appointmentFile, sizeof(Appointment), offsetof(Appointment, doctor_id));
 }

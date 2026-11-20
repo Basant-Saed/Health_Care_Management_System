@@ -33,29 +33,29 @@ extern SecondaryIndex doctorNameIndex;
 extern SecondaryIndex doctorSpecialtyIndex;
 extern SecondaryIndex appointmentDoctorIndex;
 
-// ----- Doctor Name (Doctors file) -----
-int  binarySearchName(const char* name);
+// Doctor Name Index
+int binarySearchName(const char* name);
 bool insertDoctorNameIndex(const char* name, const char* doctorID);
 bool deleteDoctorNameIndex(const char* name, const char* doctorID);
 bool updateDoctorNameIndex(const char* oldName, const char* newName, const char* doctorID);
 bool renameDoctorIDInNameIndex(const char* name, const char* oldID, const char* newID);
-int  searchDoctorNameIndex(const char* name, char outIDs[][KEY_SIZE], int maxIDs);
+int searchDoctorNameIndex(const char* name, char outIDs[][KEY_SIZE], int maxIDs);
 void buildDoctorNameIndex(const char* doctorFile);
 
-// ----- Doctor Specialty (Doctors file) -----
-int  binarySearchSpecialty(const char* specialty);
+// Doctor Specialty Index
+int binarySearchSpecialty(const char* specialty);
 bool insertDoctorSpecialtyIndex(const char* specialty, const char* doctorID);
 bool deleteDoctorSpecialtyIndex(const char* specialty, const char* doctorID);
 bool updateDoctorSpecialtyIndex(const char* oldSpecialty, const char* newSpecialty, const char* doctorID);
 bool renameDoctorIDInSpecialtyIndex(const char* specialty, const char* oldID, const char* newID);
-int  searchDoctorSpecialtyIndex(const char* specialty, char outIDs[][KEY_SIZE], int maxIDs);
+int searchDoctorSpecialtyIndex(const char* specialty, char outIDs[][KEY_SIZE], int maxIDs);
 void buildDoctorSpecialtyIndex(const char* doctorFile);
 
-// ----- Doctor ID (Appointments file) -----
-int  binarySearchAppointmentDoctor(const char* doctorID);
+// Appointment Doctor ID Index
+int binarySearchAppointmentDoctor(const char* doctorID);
 bool insertAppointmentDoctorIndex(const char* doctorID, const char* appointmentID);
 bool deleteAppointmentDoctorIndex(const char* doctorID, const char* appointmentID);
-int  searchAppointmentsByDoctorID(const char* doctorID, char outIDs[][KEY_SIZE], int maxIDs);
+int searchAppointmentsByDoctorID(const char* doctorID, char outIDs[][KEY_SIZE], int maxIDs);
 void buildAppointmentDoctorIndex(const char* appointmentFile);
 
 #endif
